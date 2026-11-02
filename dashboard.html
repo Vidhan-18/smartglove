@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>SmartGlove — Mission Control</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap');
+
+:root{
+  --bg:     #060a0f;
+  --s1:     #0a1018;
+  --s2:     #0d1520;
+  --s3:     #101c2a;
+  --border: rgba(64,180,255,0.12);
+  --b2:     rgba(64,180,255,0.22);
+  --cyan:   #40b4ff;
+  --teal:   #00e5cc;
+  --green:  #00ff87;
+  --amber:  #ffb930;
+  --red:    #ff4060;
+  --purple: #c060ff;
+  --white:  #d0e8ff;
+  --dim:    #2a4a6a;
+  --dim2:   #1a2f45;
+  --font:   'Rajdhani', sans-serif;
+  --mono:   'Share Tech Mono', monospace;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;}
+
+body{
+  background:var(--bg);
+  color:var(--white);
+  font-family:var(--font);
+  display:grid;
+  grid-template-rows:44px 1fr 34px;
+  height:100vh;
+  background-image:
+    repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(64,180,255,0.012) 2px,rgba(64,180,255,0.012) 4px),
+    radial-gradient(ellipse 80% 60% at 50% 0%,rgba(64,180,255,0.06) 0%,transparent 70%);
+}
+
+/* ══ HEADER ══ */
+header{
+  display:flex;align-items:center;gap:14px;
+  padding:0 16px;
+  background:rgba(6,10,15,0.97);
+  border-bottom:1px solid var(--b2);
+}
+.logo{
+  font-family:var(--font);font-weight:700;font-size:17px;
+  letter-spacing:5px;color:var(--cyan);
+  text-shadow:0 0 18px rgba(64,180,255,0.5);
+}
+.logo sub{font-size:8px;letter-spacing:2px;color:var(--dim);vertical-align:middle;margin-left:3px;}
+.sep{width:1px;height:18px;background:var(--border);}
+#status-badge{
+  font-family:var(--mono);font-size:9px;letter-spacing:2px;
+  padding:3px 9px;border-radius:1px;
+  border:1px solid var(--red);color:var(--red);
+  transition:all .4s;
+}
+#status-badge.live{border-color:var(--green);color:var(--green);box-shadow:0 0 10px rgba(0,255,135,0.25);}
+#calib-badge{
+  font-family:var(--mono);font-size:9px;letter-spacing:1px;
+  padding:3px 9px;border-radius:1px;
+  border:1px solid var(--amber);color:var(--amber);
+}
+#calib-badge.ok{border-color:var(--green);color:var(--green);}
+.hstats{margin-left:auto;display:flex;gap:18px;align-items:center;}
+.hs{font-family:var(--mono);font-size:9px;color:var(--dim);
+    display:flex;flex-direction:column;align-items:center;gap:1px;}
+.hs span{color:var(--cyan);font-size:12px;font-weight:700;line-height:1;}
+.hs span.ok{color:var(--green);}
+.hs span.warn{color:var(--amber);}
+.hs span.bad{color:var(--red);}
+
+/* ══ MAIN LAYOUT — 4 cols × 2 rows ══ */
+.layout{
+  display:grid;
+  grid-template-columns:280px 1fr 1fr 210px;
+  grid-template-rows:1fr 1fr;
+  gap:1px;background:var(--border);
+  overflow:hidden;min-height:0;
+}
+
+/* ══ PANEL BASE ══ */
+.panel{
+  background:var(--s1);
+  display:flex;flex-direction:column;
+  overflow:hidden;position:relative;min-height:0;
+}
+.panel::before,.panel::after{
+  content:'';position:absolute;
+  width:8px;height:8px;
+  border-color:var(--cyan);border-style:solid;
+  opacity:.3;z-index:3;pointer-events:none;
+}
+.panel::before{top:5px;left:5px;border-width:1px 0 0 1px;}
+.panel::after{bottom:5px;right:5px;border-width:0 1px 1px 0;}
+
+.ptag{
+  font-family:var(--mono);font-size:8px;letter-spacing:2px;
+  color:var(--dim);padding:7px 12px 5px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:7px;flex-shrink:0;
+}
+.ptag .dot{
+  width:5px;height:5px;border-radius:50%;
+  background:var(--cyan);flex-shrink:0;
+  animation:blink 2.4s ease-in-out infinite;
+  box-shadow:0 0 5px var(--cyan);
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.15}}
+.inner{flex:1;overflow:hidden;display:flex;flex-direction:column;
+       gap:6px;padding:9px 11px;min-height:0;}
+
+/* ══ CAMERA (col1, row span 2) ══ */
+#p-cam{grid-row:span 2;}
+#p-cam .inner{padding:5px 5px 0;}
+#camera-feed{
+  width:100%;aspect-ratio:1/1;
+  object-fit:cover;border-radius:2px;
+  background:var(--s3);border:1px solid var(--border);
+  display:block;flex-shrink:0;
+}
+.cam-bar{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:4px 9px;border-top:1px solid var(--border);flex-shrink:0;
+}
+.cam-stat{display:flex;gap:5px;align-items:center;}
+.cam-dot{width:7px;height:7px;border-radius:50%;transition:background .4s;}
+.cam-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);}
+.mchips{display:flex;gap:3px;}
+.mchip{
+  font-family:var(--mono);font-size:8px;
+  padding:2px 5px;border-radius:1px;
+  border:1px solid var(--dim2);color:var(--dim);transition:all .2s;
+}
+.mchip.hit{border-color:var(--green);color:var(--green);
+            box-shadow:0 0 5px rgba(0,255,135,0.3);
+            background:rgba(0,255,135,0.05);}
+
+/* ══ 3D SCENE ══ */
+#canvas-scene{width:100%;flex:1;display:block;cursor:grab;min-height:0;}
+#canvas-scene:active{cursor:grabbing;}
+
+/* ══ ORIENT ══ */
+#canvas-orient{width:100%;flex:1;display:block;min-height:0;}
+.angle-row{
+  display:grid;grid-template-columns:1fr 1fr 1fr;
+  gap:4px;padding:0 9px 7px;flex-shrink:0;
+}
+.abox{background:var(--s2);border:1px solid var(--border);
+      border-radius:2px;text-align:center;padding:4px;}
+.abox-l{font-family:var(--mono);font-size:7px;color:var(--dim);letter-spacing:1px;}
+.abox-v{font-family:var(--font);font-size:17px;font-weight:700;margin-top:1px;}
+
+/* ══ AXIS BARS ══ */
+.sdiv{
+  display:flex;align-items:center;gap:8px;
+  font-family:var(--mono);font-size:7px;color:var(--dim);
+  letter-spacing:2px;margin:3px 0 2px;flex-shrink:0;
+}
+.sdiv::before,.sdiv::after{content:'';flex:1;height:1px;background:var(--border);}
+.irow{display:grid;grid-template-columns:46px 1fr 52px;
+      align-items:center;gap:6px;margin-bottom:3px;}
+.irow-l{font-family:var(--mono);font-size:8px;color:var(--dim);}
+.bar-track{height:12px;background:var(--s3);border:1px solid var(--border);
+           border-radius:1px;overflow:hidden;position:relative;}
+.bar-center{position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--b2);}
+.bar-fill{position:absolute;top:1px;bottom:1px;border-radius:1px;transition:width .09s,left .09s;}
+.bar-val{font-family:var(--mono);font-size:9px;text-align:right;font-weight:700;}
+
+/* ══ CALIBRATION ══ */
+.cal-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;flex-shrink:0;}
+.cbox{background:var(--s2);border:1px solid var(--border);
+      border-radius:2px;text-align:center;padding:4px 2px;}
+.cbox-l{font-family:var(--mono);font-size:7px;color:var(--dim);}
+.cbox-v{font-family:var(--font);font-size:18px;font-weight:700;
+        margin-top:1px;transition:color .4s;}
+
+/* ══ EKF STATUS ══ */
+.ekf-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;flex-shrink:0;}
+.ekf-box{background:var(--s2);border:1px solid var(--border);
+         border-radius:2px;padding:4px 6px;text-align:center;}
+.ekf-l{font-family:var(--mono);font-size:7px;color:var(--dim);letter-spacing:1px;}
+.ekf-v{font-family:var(--font);font-size:14px;font-weight:700;
+       color:var(--cyan);margin-top:1px;}
+
+/* ══ PREDICTION PANEL (col4, row span 2) ══ */
+#p-pred{grid-row:span 2;}
+#p-pred .inner{align-items:center;justify-content:space-between;padding:10px 9px;}
+
+.pred-main{
+  width:100%;background:var(--s2);
+  border:1px solid var(--b2);border-radius:2px;
+  padding:14px 8px;text-align:center;
+  position:relative;overflow:hidden;flex-shrink:0;
+}
+.pred-main::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 110%,rgba(64,180,255,0.07),transparent 65%);
+  pointer-events:none;
+}
+.pred-lbl-sm{font-family:var(--mono);font-size:8px;letter-spacing:3px;
+             color:var(--dim);margin-bottom:6px;}
+#pred-big{
+  font-family:var(--font);font-size:54px;font-weight:700;
+  line-height:1;letter-spacing:6px;transition:all .35s;
+}
+#pred-reason{font-family:var(--mono);font-size:8px;color:var(--dim);
+             margin-top:5px;letter-spacing:.5px;min-height:12px;}
+
+/* Probability bars K1 / K2 */
+.prob-block{width:100%;flex-shrink:0;}
+.prob-row{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+.prob-lbl{font-family:var(--mono);font-size:9px;width:24px;font-weight:700;}
+.prob-track{flex:1;height:8px;background:var(--s3);
+            border:1px solid var(--border);border-radius:1px;overflow:hidden;}
+.prob-fill{height:100%;border-radius:1px;transition:width .35s;}
+.prob-pct{font-family:var(--mono);font-size:9px;width:30px;text-align:right;}
+
+/* Confidence */
+.conf-block{width:100%;flex-shrink:0;}
+.conf-hdr{display:flex;justify-content:space-between;
+          font-family:var(--mono);font-size:8px;color:var(--dim);margin-bottom:4px;}
+.conf-track{height:4px;background:var(--s3);
+            border-radius:2px;border:1px solid var(--border);overflow:hidden;}
+#conf-bar{height:100%;border-radius:2px;background:var(--amber);
+          transition:width .4s;width:0%;}
+
+/* Pipeline state pills */
+.pipe-row{display:flex;gap:4px;flex-wrap:wrap;width:100%;flex-shrink:0;}
+.pill{
+  font-family:var(--mono);font-size:7px;letter-spacing:1px;
+  padding:2px 6px;border-radius:1px;
+  border:1px solid var(--dim2);color:var(--dim);
+  transition:all .3s;
+}
+.pill.on{border-color:var(--teal);color:var(--teal);
+         background:rgba(0,229,204,0.07);}
+.pill.warn{border-color:var(--amber);color:var(--amber);}
+.pill.bad{border-color:var(--red);color:var(--red);}
+
+/* LED indicators */
+.led-grid{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:5px;flex-shrink:0;}
+.led-card{background:var(--s2);border:1px solid var(--border);
+          border-radius:2px;padding:6px;
+          display:flex;align-items:center;gap:7px;}
+.led-bulb{width:13px;height:13px;border-radius:50%;
+          border:2px solid var(--dim);background:var(--dim2);
+          transition:all .3s;flex-shrink:0;}
+.led-bulb.g{background:var(--green);border-color:var(--green);
+            box-shadow:0 0 10px rgba(0,255,135,0.55);}
+.led-bulb.r{background:var(--red);border-color:var(--red);
+            box-shadow:0 0 10px rgba(255,64,96,0.55);}
+.led-name{font-family:var(--font);font-size:11px;font-weight:600;}
+.led-st{font-family:var(--mono);font-size:7px;color:var(--dim);}
+
+/* Marker list */
+.mkr-list{width:100%;display:flex;flex-direction:column;gap:3px;flex-shrink:0;}
+.mkr-row{
+  background:var(--s2);border:1px solid var(--border);
+  border-radius:2px;padding:4px 7px;
+  display:flex;align-items:center;gap:7px;transition:all .2s;
+}
+.mkr-row.active{border-color:var(--teal);background:rgba(0,229,204,0.04);}
+.mkr-dot{width:5px;height:5px;border-radius:50%;background:var(--dim2);
+         flex-shrink:0;transition:all .2s;}
+.mkr-row.active .mkr-dot{background:var(--teal);box-shadow:0 0 7px rgba(0,229,204,0.6);}
+.mkr-id{font-family:var(--mono);font-size:9px;color:var(--dim);
+        flex:1;transition:color .2s;}
+.mkr-row.active .mkr-id{color:var(--teal);}
+.mkr-pos{font-family:var(--mono);font-size:7px;color:var(--dim);}
+.mkr-tz{font-family:var(--mono);font-size:8px;color:var(--cyan);margin-left:auto;}
+
+/* ══ FOOTER ══ */
+footer{
+  display:flex;align-items:center;gap:14px;
+  padding:0 16px;
+  background:rgba(6,10,15,0.97);
+  border-top:1px solid var(--border);
+  font-family:var(--mono);font-size:8px;color:var(--dim);letter-spacing:.5px;
+}
+.fst{display:flex;gap:5px;align-items:center;}
+.fst span{color:var(--cyan);}
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<header>
+  <div class="logo">SmartGlove<sub>v2</sub></div>
+  <div class="sep"></div>
+  <div id="status-badge">OFFLINE</div>
+  <div id="calib-badge">UNCALIBRATED</div>
+  <div class="hstats">
+    <div class="hs"><span id="h-fps">0</span>FPS</div>
+    <div class="hs"><span id="h-lat">--</span>LAT·ms</div>
+    <div class="hs"><span id="h-mkr">0/4</span>MARKERS</div>
+    <div class="hs"><span id="h-hdg">0°</span>HEADING</div>
+    <div class="hs"><span id="h-vmag">0.000</span>V·m/s</div>
+    <div class="hs"><span id="h-cal">0/3</span>SYS·CAL</div>
+    <div class="hs"><span id="h-pred" style="color:var(--amber)">--</span>PREDICT</div>
+  </div>
+</header>
+
+<!-- ══ MAIN ══ -->
+<div class="layout">
+
+  <!-- COL1: Camera feed (full height) -->
+  <div class="panel" id="p-cam">
+    <div class="ptag"><div class="dot"></div>LIVE CAMERA FEED</div>
+    <div class="inner">
+      <img id="camera-feed" src="" alt=""/>
+    </div>
+    <div class="cam-bar">
+      <div class="cam-stat">
+        <div class="cam-dot" id="cam-dot" style="background:var(--red)"></div>
+        <span class="cam-lbl" id="cam-lbl">NO SIGNAL</span>
+      </div>
+      <div class="mchips">
+        <div class="mchip" id="chip0">ID·0</div>
+        <div class="mchip" id="chip1">ID·1</div>
+        <div class="mchip" id="chip2">ID·2</div>
+        <div class="mchip" id="chip3">ID·3</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COL2 ROW1: 3D ArUco scene -->
+  <div class="panel">
+    <div class="ptag"><div class="dot"></div>3D ARUCO SCENE — drag to rotate</div>
+    <div class="inner" style="padding:4px;">
+      <canvas id="canvas-scene"></canvas>
+    </div>
+  </div>
+
+  <!-- COL3 ROW1: Camera orientation -->
+  <div class="panel">
+    <div class="ptag"><div class="dot"></div>CAMERA ORIENTATION — live BNO055</div>
+    <div class="inner" style="padding:4px 4px 0;">
+      <canvas id="canvas-orient"></canvas>
+    </div>
+    <div class="angle-row">
+      <div class="abox"><div class="abox-l">HEADING</div>
+        <div class="abox-v" id="o-hdg" style="color:var(--green)">0°</div></div>
+      <div class="abox"><div class="abox-l">ROLL</div>
+        <div class="abox-v" id="o-roll" style="color:var(--cyan)">0°</div></div>
+      <div class="abox"><div class="abox-l">PITCH</div>
+        <div class="abox-v" id="o-pitch" style="color:var(--purple)">0°</div></div>
+    </div>
+  </div>
+
+  <!-- COL4: Prediction (full height) -->
+  <div class="panel" id="p-pred">
+    <div class="ptag"><div class="dot"></div>INTENT PREDICTION</div>
+    <div class="inner">
+
+      <div class="pred-main">
+        <div class="pred-lbl-sm">REACHING FOR</div>
+        <div id="pred-big" style="color:var(--dim)">--</div>
+        <div id="pred-reason">awaiting data</div>
+      </div>
+
+      <!-- Probability bars -->
+      <div class="prob-block">
+        <div class="prob-row">
+          <div class="prob-lbl" style="color:var(--amber)">K1</div>
+          <div class="prob-track">
+            <div class="prob-fill" id="prob-k1" style="background:var(--amber);width:50%"></div>
+          </div>
+          <div class="prob-pct" id="pct-k1" style="color:var(--amber)">50%</div>
+        </div>
+        <div class="prob-row">
+          <div class="prob-lbl" style="color:var(--purple)">K2</div>
+          <div class="prob-track">
+            <div class="prob-fill" id="prob-k2" style="background:var(--purple);width:50%"></div>
+          </div>
+          <div class="prob-pct" id="pct-k2" style="color:var(--purple)">50%</div>
+        </div>
+      </div>
+
+      <!-- Confidence -->
+      <div class="conf-block">
+        <div class="conf-hdr"><span>CONFIDENCE</span><span id="conf-pct">0%</span></div>
+        <div class="conf-track"><div id="conf-bar"></div></div>
+      </div>
+
+      <!-- Pipeline state pills -->
+      <div class="sdiv">PIPELINE</div>
+      <div class="pipe-row">
+        <!-- FIX: mapped to server fields: board_vis, ready, onset, cam_ok -->
+        <div class="pill" id="pill-geo">BOARD·VIS</div>
+        <div class="pill" id="pill-ekf">EKF·RDY</div>
+        <div class="pill" id="pill-onset">ONSET</div>
+        <div class="pill" id="pill-cam">CAM·OK</div>
+      </div>
+
+      <!-- LED status -->
+      <div class="sdiv">LED STATUS</div>
+      <div class="led-grid">
+        <div class="led-card">
+          <div class="led-bulb" id="led-g"></div>
+          <div><div class="led-name">GREEN</div>
+               <div class="led-st" id="led-gs">OFF</div></div>
+        </div>
+        <div class="led-card">
+          <div class="led-bulb" id="led-r"></div>
+          <div><div class="led-name">RED</div>
+               <div class="led-st" id="led-rs">OFF</div></div>
+        </div>
+      </div>
+
+      <!-- Marker list with 3D distance -->
+      <div class="sdiv">ARUCO MARKERS</div>
+      <div class="mkr-list">
+        <div class="mkr-row" id="ms0"><div class="mkr-dot"></div>
+          <div class="mkr-id">ID·0</div><div class="mkr-pos">TOP-LEFT</div>
+          <div class="mkr-tz" id="mtz0">--</div></div>
+        <div class="mkr-row" id="ms1"><div class="mkr-dot"></div>
+          <div class="mkr-id">ID·1</div><div class="mkr-pos">TOP-RIGHT</div>
+          <div class="mkr-tz" id="mtz1">--</div></div>
+        <div class="mkr-row" id="ms2"><div class="mkr-dot"></div>
+          <div class="mkr-id">ID·2</div><div class="mkr-pos">BOT-LEFT</div>
+          <div class="mkr-tz" id="mtz2">--</div></div>
+        <div class="mkr-row" id="ms3"><div class="mkr-dot"></div>
+          <div class="mkr-id">ID·3</div><div class="mkr-pos">BOT-RIGHT</div>
+          <div class="mkr-tz" id="mtz3">--</div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- COL2 ROW2: IMU bars -->
+  <div class="panel">
+    <div class="ptag"><div class="dot"></div>IMU — LINEAR ACCELERATION (BNO055)</div>
+    <div class="inner">
+
+      <!-- FIX: BNO055 only sends linear_acceleration (ax/ay/az), no raw gyro.
+           We show the 3 accel axes with full range, and orientation-derived
+           angular rates below from heading/roll/pitch deltas. -->
+      <div class="sdiv">LINEAR ACCEL  m/s²  (gravity-free)</div>
+      <div class="irow"><span class="irow-l" style="color:var(--cyan)">ACCEL·X</span>
+        <div class="bar-track"><div class="bar-center"></div>
+          <div class="bar-fill" id="b-ax" style="background:var(--cyan)"></div></div>
+        <span class="bar-val" id="v-ax" style="color:var(--cyan)">0.000</span></div>
+      <div class="irow"><span class="irow-l" style="color:var(--cyan)">ACCEL·Y</span>
+        <div class="bar-track"><div class="bar-center"></div>
+          <div class="bar-fill" id="b-ay" style="background:var(--cyan)"></div></div>
+        <span class="bar-val" id="v-ay" style="color:var(--cyan)">0.000</span></div>
+      <div class="irow"><span class="irow-l" style="color:var(--cyan)">ACCEL·Z</span>
+        <div class="bar-track"><div class="bar-center"></div>
+          <div class="bar-fill" id="b-az" style="background:var(--cyan)"></div></div>
+        <span class="bar-val" id="v-az" style="color:var(--cyan)">0.000</span></div>
+
+      <!-- FIX: renamed DISP→POS since EKF now tracks absolute world position -->
+      <div class="sdiv">EKF STATE</div>
+      <div class="ekf-row">
+        <div class="ekf-box"><div class="ekf-l">V·MAG m/s</div>
+          <div class="ekf-v" id="ekf-vmag">0.000</div></div>
+        <div class="ekf-box"><div class="ekf-l">POS·X m</div>
+          <div class="ekf-v" id="ekf-px">0.000</div></div>
+        <div class="ekf-box"><div class="ekf-l">POS·Z m</div>
+          <div class="ekf-v" id="ekf-pz">0.000</div></div>
+      </div>
+
+      <!-- EKF velocity components -->
+      <div class="sdiv">EKF VELOCITY  m/s</div>
+      <div class="irow"><span class="irow-l" style="color:var(--teal)">VEL·X</span>
+        <div class="bar-track"><div class="bar-center"></div>
+          <div class="bar-fill" id="b-vx" style="background:var(--teal)"></div></div>
+        <span class="bar-val" id="v-vx" style="color:var(--teal)">0.000</span></div>
+      <div class="irow"><span class="irow-l" style="color:var(--teal)">VEL·Y</span>
+        <div class="bar-track"><div class="bar-center"></div>
+          <div class="bar-fill" id="b-vy" style="background:var(--teal)"></div></div>
+        <span class="bar-val" id="v-vy" style="color:var(--teal)">0.000</span></div>
+      <div class="irow"><span class="irow-l" style="color:var(--teal)">VEL·Z</span>
+        <div class="bar-track"><div class="bar-center"></div>
+          <div class="bar-fill" id="b-vz" style="background:var(--teal)"></div></div>
+        <span class="bar-val" id="v-vz" style="color:var(--teal)">0.000</span></div>
+
+      <div class="sdiv">CALIBRATION</div>
+      <div class="cal-row">
+        <div class="cbox"><div class="cbox-l">SYS</div>
+          <div class="cbox-v" id="cal-sys">0</div></div>
+        <div class="cbox"><div class="cbox-l">GYRO</div>
+          <div class="cbox-v" id="cal-gyro">0</div></div>
+        <div class="cbox"><div class="cbox-l">ACCEL</div>
+          <div class="cbox-v" id="cal-accel">0</div></div>
+        <div class="cbox"><div class="cbox-l">MAG</div>
+          <div class="cbox-v" id="cal-mag">0</div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- COL3 ROW2: Angle gauges + compass -->
+  <div class="panel">
+    <div class="ptag"><div class="dot"></div>ORIENTATION ANGLES</div>
+    <div class="inner">
+      <div class="gauge-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;
+           gap:8px;flex:1;min-height:0;">
+        <div style="display:flex;flex-direction:column;align-items:center;
+             justify-content:center;gap:4px;">
+          <div style="font-family:var(--mono);font-size:7px;color:var(--dim);letter-spacing:2px;">HEADING</div>
+          <canvas id="g-hdg-c" style="flex:1;width:100%;max-width:80px;min-height:0;"></canvas>
+          <div style="font-family:var(--font);font-size:20px;font-weight:700;"
+               id="g-hdg" style="color:var(--green)">0°</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;
+             justify-content:center;gap:4px;">
+          <div style="font-family:var(--mono);font-size:7px;color:var(--dim);letter-spacing:2px;">ROLL</div>
+          <canvas id="g-roll-c" style="flex:1;width:100%;max-width:80px;min-height:0;"></canvas>
+          <div style="font-family:var(--font);font-size:20px;font-weight:700;color:var(--cyan);"
+               id="g-roll">0°</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;
+             justify-content:center;gap:4px;">
+          <div style="font-family:var(--mono);font-size:7px;color:var(--dim);letter-spacing:2px;">PITCH</div>
+          <canvas id="g-pitch-c" style="flex:1;width:100%;max-width:80px;min-height:0;"></canvas>
+          <div style="font-family:var(--font);font-size:20px;font-weight:700;color:var(--purple);"
+               id="g-pitch">0°</div>
+        </div>
+      </div>
+      <div style="flex-shrink:0;">
+        <div class="sdiv">COMPASS</div>
+        <canvas id="compass" style="width:100%;height:34px;display:block;"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══ FOOTER ══ -->
+<footer>
+  <div class="fst">WS <span id="f-ws">DISCONNECTED</span></div>
+  <div class="fst">LAT <span id="f-lat">-- ms</span></div>
+  <div class="fst">FRAMES <span id="f-frames">0</span></div>
+  <div class="fst">CAM <span id="f-cam">640×480</span></div>
+  <div style="margin-left:auto" class="fst">
+    SmartGlove · BNO055 + ArUco DICT_4X4_50 · Pi 5 · Camera-on-Glove
+  </div>
+</footer>
+
+<script>
+// ══════════════════════════════════════════
+// STATE — mirrors server payload exactly
+// ══════════════════════════════════════════
+let IMU  = {heading:0,roll:0,pitch:0,ax:0,ay:0,az:0,
+            cal_sys:0,cal_gyro:0,cal_accel:0,cal_mag:0};
+let MKRS = [];
+let PRED = {label:'--',confidence:0,reason:'',P_K1:0.5,P_K2:0.5};
+let EKF  = {px:0,py:0,pz:0,vx:0,vy:0,vz:0,v_mag:0,
+            onset:false,board_vis:false,ready:false,cam_ok:false};
+
+let rotX=.32,rotY=.5,drag=false,lx=0,ly=0;
+let fps=0,fpsT=Date.now(),totalF=0;
+let lastMsgT=Date.now();
+
+// ══════════════════════════════════════════
+// 3D MATH
+// ══════════════════════════════════════════
+function proj(x,y,z,cx,cy,sc,rx,ry){
+  const cX=Math.cos(rx),sX=Math.sin(rx),cY=Math.cos(ry),sY=Math.sin(ry);
+  const y1=y*cX-z*sX,z1=y*sX+z*cX;
+  const x1=x*cY+z1*sY,z2=-x*sY+z1*cY;
+  const f=420/(420+z2+350);
+  return{x:cx+x1*f*sc,y:cy+y1*f*sc,z:z2};
+}
+function euler2mat(hD,rD,pD){
+  const h=hD*Math.PI/180,r=rD*Math.PI/180,p=pD*Math.PI/180;
+  const ch=Math.cos(h),sh=Math.sin(h),cr=Math.cos(r),sr=Math.sin(r),
+        cp=Math.cos(p),sp=Math.sin(p);
+  return[ch*cr+sh*sp*sr,-ch*sr+sh*sp*cr,sh*cp,
+         cp*sr,cp*cr,-sp,
+        -sh*cr+ch*sp*sr,sh*sr+ch*sp*cr,ch*cp];
+}
+function mxv(m,v){
+  return[m[0]*v[0]+m[1]*v[1]+m[2]*v[2],
+         m[3]*v[0]+m[4]*v[1]+m[5]*v[2],
+         m[6]*v[0]+m[7]*v[1]+m[8]*v[2]];
+}
+
+// ══════════════════════════════════════════
+// BIDIRECTIONAL AXIS BAR
+// ══════════════════════════════════════════
+function setBar(bId,vId,val,max){
+  const b=document.getElementById(bId),v=document.getElementById(vId);
+  if(!b||!v)return;
+  const pct=Math.min(50,Math.abs(val)/max*50);
+  if(val>=0){b.style.left='50%';b.style.width=pct+'%';}
+  else{b.style.left=(50-pct)+'%';b.style.width=pct+'%';}
+  v.textContent=val.toFixed(3);
+}
+
+// ══════════════════════════════════════════
+// ARC GAUGE
+// ══════════════════════════════════════════
+function drawGauge(id,val,maxV,col){
+  const c=document.getElementById(id);
+  if(!c)return;
+  c.width=c.offsetWidth||80;c.height=c.offsetHeight||80;
+  const ctx=c.getContext('2d'),W=c.width,H=c.height,
+        cx=W/2,cy=H/2,r=Math.min(W,H)/2-3;
+  ctx.clearRect(0,0,W,H);
+  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
+  ctx.strokeStyle='rgba(255,255,255,0.05)';ctx.lineWidth=3;ctx.stroke();
+  const pct=Math.abs(val)/maxV;
+  const sA=-Math.PI/2,eA=sA+pct*Math.PI*2;
+  ctx.beginPath();ctx.arc(cx,cy,r,sA,eA);
+  ctx.strokeStyle=col;ctx.lineWidth=3;ctx.lineCap='round';
+  ctx.shadowColor=col;ctx.shadowBlur=10;ctx.stroke();ctx.shadowBlur=0;
+  const nx=cx+Math.cos(eA)*r,ny=cy+Math.sin(eA)*r;
+  ctx.beginPath();ctx.arc(nx,ny,3,0,Math.PI*2);
+  ctx.fillStyle=col;ctx.shadowColor=col;ctx.shadowBlur=8;ctx.fill();ctx.shadowBlur=0;
+}
+
+// ══════════════════════════════════════════
+// COMPASS
+// ══════════════════════════════════════════
+function drawCompass(h){
+  const c=document.getElementById('compass');
+  if(!c)return;
+  c.width=c.offsetWidth||300;c.height=34;
+  const ctx=c.getContext('2d'),W=c.width,H=c.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='rgba(10,16,24,0.8)';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(64,180,255,0.15)';ctx.lineWidth=1;ctx.strokeRect(0,0,W,H);
+  const dirs=[{l:'N',v:0},{l:'NE',v:45},{l:'E',v:90},{l:'SE',v:135},
+              {l:'S',v:180},{l:'SW',v:225},{l:'W',v:270},{l:'NW',v:315},{l:'N',v:360}];
+  const px=W/90;
+  dirs.forEach(d=>{
+    const x=W/2+(d.v-h)*px;
+    if(x<-30||x>W+30)return;
+    const isC=d.l.length===1;
+    ctx.strokeStyle=isC?'rgba(64,180,255,0.65)':'rgba(64,180,255,0.2)';
+    ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x,isC?3:7);ctx.lineTo(x,isC?H-3:H-7);ctx.stroke();
+    ctx.font=`${isC?10:8}px Share Tech Mono,monospace`;
+    ctx.fillStyle=isC?'rgba(64,180,255,0.9)':'rgba(64,180,255,0.4)';
+    ctx.textAlign='center';ctx.fillText(d.l,x,H/2+3);
+  });
+  ctx.fillStyle='#00ff87';
+  ctx.beginPath();ctx.moveTo(W/2,2);ctx.lineTo(W/2-5,11);ctx.lineTo(W/2+5,11);
+  ctx.closePath();ctx.fill();
+  ctx.strokeStyle='rgba(0,255,135,0.5)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(W/2,0);ctx.lineTo(W/2,H);ctx.stroke();
+}
+
+// ══════════════════════════════════════════
+// CALIBRATION COLOR
+// ══════════════════════════════════════════
+const calC=['#ff4060','#ffb930','#ffd93d','#00ff87'];
+function setCal(id,v){
+  const e=document.getElementById(id);
+  if(e){e.textContent=v;e.style.color=calC[Math.min(v,3)];}
+}
+
+// ══════════════════════════════════════════
+// 3D SCENE
+// ══════════════════════════════════════════
+const SC=document.getElementById('canvas-scene');
+const SCX=SC.getContext('2d');
+// FIX: marker positions match server MPOS — ID0=TL, ID1=TR, ID2=BL, ID3=BR
+// using normalised coords [-1,1]
+const MPOS={0:[-0.7,-0.7],1:[0.7,-0.7],2:[-0.7,0.7],3:[0.7,0.7]};
+const MCOL={0:'#40b4ff',1:'#00ff87',2:'#c060ff',3:'#ffb930'};
+
+SC.addEventListener('mousedown',e=>{drag=true;lx=e.clientX;ly=e.clientY;});
+window.addEventListener('mousemove',e=>{
+  if(!drag)return;
+  rotY+=(e.clientX-lx)*.012;rotX+=(e.clientY-ly)*.012;
+  lx=e.clientX;ly=e.clientY;
+});
+window.addEventListener('mouseup',()=>drag=false);
+
+function drawScene(){
+  SC.width=SC.offsetWidth;SC.height=SC.offsetHeight;
+  const W=SC.width,H=SC.height,cx=W*.5,cy=H*.47,sc=Math.min(W,H)*.29;
+  SCX.clearRect(0,0,W,H);
+  const P=(x,y,z)=>proj(x,y,z,cx,cy,sc,rotX,rotY);
+
+  // Floor grid
+  SCX.strokeStyle='rgba(64,180,255,0.05)';SCX.lineWidth=.5;
+  for(let i=-5;i<=5;i++){
+    const t=i*.2;
+    const a=P(t,1.1,-1.1),b=P(t,1.1,1.1),c2=P(-1.1,1.1,t),d=P(1.1,1.1,t);
+    SCX.beginPath();SCX.moveTo(a.x,a.y);SCX.lineTo(b.x,b.y);SCX.stroke();
+    SCX.beginPath();SCX.moveTo(c2.x,c2.y);SCX.lineTo(d.x,d.y);SCX.stroke();
+  }
+
+  // Wall (board)
+  const wc=[P(-1,-1,0),P(1,-1,0),P(1,1,0),P(-1,1,0)];
+  SCX.beginPath();SCX.moveTo(wc[0].x,wc[0].y);
+  wc.forEach(v=>SCX.lineTo(v.x,v.y));SCX.closePath();
+  SCX.fillStyle='rgba(64,180,255,0.03)';SCX.fill();
+  SCX.strokeStyle='rgba(64,180,255,0.25)';SCX.lineWidth=1;SCX.stroke();
+
+  // K1 / K2 zones
+  [{l:'K1',x:-.42,col:'#ffb930'},{l:'K2',x:.42,col:'#c060ff'}].forEach(z=>{
+    const hw=.3,hh=.42,active=PRED.label===z.l;
+    const zc=[P(z.x-hw,-.42,.02),P(z.x+hw,-.42,.02),P(z.x+hw,.42,.02),P(z.x-hw,.42,.02)];
+    SCX.beginPath();SCX.moveTo(zc[0].x,zc[0].y);
+    zc.forEach(v=>SCX.lineTo(v.x,v.y));SCX.closePath();
+    SCX.fillStyle=active?z.col+'30':z.col+'12';SCX.fill();
+    SCX.strokeStyle=active?z.col+'ee':z.col+'66';
+    SCX.lineWidth=active?2:1;
+    SCX.setLineDash(active?[]:[5,4]);SCX.stroke();SCX.setLineDash([]);
+    if(active){SCX.shadowColor=z.col;SCX.shadowBlur=18;}
+    const mp=P(z.x,0,.02);
+    SCX.font=`bold ${Math.round(sc*.12)}px Rajdhani,sans-serif`;
+    SCX.fillStyle=active?z.col:'rgba(255,255,255,0.4)';
+    SCX.textAlign='center';SCX.fillText(z.l,mp.x,mp.y+4);
+    SCX.shadowBlur=0;
+  });
+
+  // ArUco markers on board
+  const detIds=MKRS.map(m=>m.id);
+  Object.entries(MPOS).forEach(([id,pos])=>{
+    const hit=detIds.includes(parseInt(id));
+    const col=MCOL[id],s=.15;
+    const mc=[P(pos[0]-s,pos[1]-s,0),P(pos[0]+s,pos[1]-s,0),
+              P(pos[0]+s,pos[1]+s,0),P(pos[0]-s,pos[1]+s,0)];
+    SCX.beginPath();SCX.moveTo(mc[0].x,mc[0].y);
+    mc.forEach(v=>SCX.lineTo(v.x,v.y));SCX.closePath();
+    SCX.fillStyle=hit?col+'28':'rgba(255,255,255,0.02)';SCX.fill();
+    SCX.strokeStyle=hit?col:'rgba(255,255,255,0.07)';SCX.lineWidth=hit?2:.7;
+    if(hit){SCX.shadowColor=col;SCX.shadowBlur=14;}
+    SCX.stroke();SCX.shadowBlur=0;
+    const mp=P(pos[0],pos[1],0);
+    SCX.font=`${Math.round(sc*.07)}px Share Tech Mono,monospace`;
+    SCX.fillStyle=hit?col:'rgba(255,255,255,0.12)';
+    SCX.textAlign='center';SCX.fillText('ID·'+id,mp.x,mp.y+4);
+  });
+
+  // Camera frustum — position driven by EKF world position + IMU heading/pitch
+  // FIX: use EKF.px/py/pz (world frame) to place camera dot, not just heading angle
+  const hR=IMU.heading*Math.PI/180,pR=IMU.pitch*Math.PI/180;
+  // Clamp camera position to reasonable scene range for display
+  const camX=Math.max(-1.2,Math.min(1.2, EKF.px*1.5));
+  const camY=Math.max(-1.2,Math.min(1.2, EKF.py*1.5));
+  const camZ=2.1;
+  const tip=P(camX,camY,camZ);
+  const fw=.34,fh=.23,fd=.82;
+  const fr=[P(camX-fw,camY-fh,camZ-fd),P(camX+fw,camY-fh,camZ-fd),
+            P(camX+fw,camY+fh,camZ-fd),P(camX-fw,camY+fh,camZ-fd)];
+  fr.forEach(fc=>{
+    SCX.beginPath();SCX.moveTo(tip.x,tip.y);SCX.lineTo(fc.x,fc.y);
+    SCX.strokeStyle='rgba(64,180,255,0.45)';SCX.lineWidth=.8;SCX.stroke();
+  });
+  SCX.beginPath();SCX.moveTo(fr[0].x,fr[0].y);
+  fr.forEach(v=>SCX.lineTo(v.x,v.y));SCX.closePath();
+  SCX.fillStyle='rgba(64,180,255,0.05)';SCX.fill();
+  SCX.strokeStyle='rgba(64,180,255,0.35)';SCX.lineWidth=1;SCX.stroke();
+
+  // Camera body dot
+  SCX.beginPath();SCX.arc(tip.x,tip.y,5,0,Math.PI*2);
+  SCX.fillStyle='#40b4ff';SCX.shadowColor='#40b4ff';SCX.shadowBlur=12;
+  SCX.fill();SCX.shadowBlur=0;
+  SCX.font='8px Share Tech Mono,monospace';
+  SCX.fillStyle='rgba(64,180,255,0.65)';SCX.textAlign='center';
+  SCX.fillText('CAM/HAND',tip.x,tip.y-12);
+
+  // Rays to detected markers
+  MKRS.forEach(m=>{
+    const mp=MPOS[m.id];if(!mp)return;
+    const tgt=P(mp[0],mp[1],0);
+    SCX.beginPath();SCX.moveTo(tip.x,tip.y);SCX.lineTo(tgt.x,tgt.y);
+    SCX.strokeStyle=MCOL[m.id]+'55';SCX.lineWidth=1;
+    SCX.setLineDash([4,6]);SCX.stroke();SCX.setLineDash([]);
+  });
+
+  // FIX: Show EKF velocity direction arrow when onset is active
+  if(EKF.onset && EKF.v_mag > 0.01){
+    const scale=0.1;
+    const handDst=P(
+      camX + EKF.vx*scale,
+      camY + EKF.vy*scale,
+      camZ - EKF.vz*scale
+    );
+    SCX.beginPath();SCX.moveTo(tip.x,tip.y);SCX.lineTo(handDst.x,handDst.y);
+    SCX.strokeStyle='rgba(229,0,204,0.8)';SCX.lineWidth=2;
+    SCX.setLineDash([]);SCX.stroke();
+    SCX.beginPath();SCX.arc(handDst.x,handDst.y,4,0,Math.PI*2);
+    SCX.fillStyle='#e500cc';SCX.shadowColor='#e500cc';SCX.shadowBlur=10;
+    SCX.fill();SCX.shadowBlur=0;
+    SCX.font='7px Share Tech Mono,monospace';
+    SCX.fillStyle='#00e5cc';SCX.textAlign='center';
+    // SCX.fillText('→INTENT',handDst.x,handDst.y-9);
+  }
+
+  if(!drag)rotY+=0;
+  requestAnimationFrame(drawScene);
+}
+drawScene();
+
+// ══════════════════════════════════════════
+// ORIENTATION CANVAS
+// ══════════════════════════════════════════
+const OC=document.getElementById('canvas-orient');
+const OCX=OC.getContext('2d');
+
+function drawOrient(){
+  OC.width=OC.offsetWidth;OC.height=OC.offsetHeight;
+  const W=OC.width,H=OC.height,cx=W*.5,cy=H*.5,S=Math.min(W,H)*.26;
+  OCX.clearRect(0,0,W,H);
+  const vRx=.38,vRy=.55;
+  const VP=(x,y,z)=>proj(x,y,z,cx,cy,S,vRx,vRy);
+  const mat=euler2mat(IMU.heading,IMU.roll,IMU.pitch);
+
+  // Sphere rings
+  for(let t=0;t<=Math.PI*2;t+=.1){
+    const x1=Math.cos(t)*.8,z1=Math.sin(t)*.8,
+          x2=Math.cos(t+.1)*.8,z2=Math.sin(t+.1)*.8;
+    const a=VP(x1,0,z1),b=VP(x2,0,z2);
+    OCX.beginPath();OCX.moveTo(a.x,a.y);OCX.lineTo(b.x,b.y);
+    OCX.strokeStyle='rgba(64,180,255,0.05)';OCX.lineWidth=.5;OCX.stroke();
+  }
+  for(let t=0;t<=Math.PI*2;t+=.1){
+    const y1=Math.cos(t)*.8,z1=Math.sin(t)*.8,
+          y2=Math.cos(t+.1)*.8,z2=Math.sin(t+.1)*.8;
+    const a=VP(0,y1,z1),b=VP(0,y2,z2);
+    OCX.beginPath();OCX.moveTo(a.x,a.y);OCX.lineTo(b.x,b.y);
+    OCX.strokeStyle='rgba(64,180,255,0.04)';OCX.lineWidth=.5;OCX.stroke();
+  }
+
+  // Camera cube (rotated by BNO055 absolute orientation)
+  const cvs=[[-0.2,-0.13,-0.28],[0.2,-0.13,-0.28],
+              [0.2,0.13,-0.28],[-0.2,0.13,-0.28],
+              [-0.2,-0.13,0.28],[0.2,-0.13,0.28],
+              [0.2,0.13,0.28],[-0.2,0.13,0.28]];
+  const rv=cvs.map(v=>mxv(mat,v));
+  const pv=rv.map(v=>VP(v[0],v[1],v[2]));
+  const faces=[[0,1,2,3],[4,5,6,7],[0,1,5,4],[3,2,6,7],[0,3,7,4],[1,2,6,5]];
+  faces.map(f=>({f,z:f.reduce((s,i)=>s+rv[i][2],0)/4}))
+       .sort((a,b)=>b.z-a.z)
+       .forEach(({f})=>{
+    OCX.beginPath();OCX.moveTo(pv[f[0]].x,pv[f[0]].y);
+    f.forEach(i=>OCX.lineTo(pv[i].x,pv[i].y));OCX.closePath();
+    OCX.fillStyle='rgba(64,180,255,0.1)';OCX.fill();
+    OCX.strokeStyle='rgba(64,180,255,0.32)';OCX.lineWidth=.8;OCX.stroke();
+  });
+
+  // Lens circle
+  const ld=mxv(mat,[0,0,-0.29]),lp=VP(ld[0],ld[1],ld[2]);
+  OCX.beginPath();OCX.arc(lp.x,lp.y,8,0,Math.PI*2);
+  OCX.fillStyle='rgba(64,180,255,0.18)';OCX.fill();
+  OCX.strokeStyle='#40b4ff';OCX.lineWidth=1.5;OCX.stroke();
+  OCX.beginPath();OCX.arc(lp.x,lp.y,3,0,Math.PI*2);
+  OCX.fillStyle='#40b4ff';OCX.shadowColor='#40b4ff';OCX.shadowBlur=7;
+  OCX.fill();OCX.shadowBlur=0;
+
+  // X/Y/Z axes
+  const orig=VP(0,0,0);
+  [{v:[1,0,0],col:'#ff4060',l:'X'},{v:[0,1,0],col:'#00ff87',l:'Y'},{v:[0,0,1],col:'#40b4ff',l:'Z'}]
+  .forEach(ax=>{
+    const rv2=mxv(mat,ax.v.map(v=>v*.72)),t=VP(rv2[0],rv2[1],rv2[2]);
+    OCX.beginPath();OCX.moveTo(orig.x,orig.y);OCX.lineTo(t.x,t.y);
+    OCX.strokeStyle=ax.col;OCX.lineWidth=2.5;
+    OCX.shadowColor=ax.col;OCX.shadowBlur=8;OCX.stroke();OCX.shadowBlur=0;
+    const dx=t.x-orig.x,dy=t.y-orig.y,len=Math.sqrt(dx*dx+dy*dy);
+    if(len>6){
+      const ux=dx/len,uy=dy/len;
+      OCX.beginPath();OCX.moveTo(t.x,t.y);
+      OCX.lineTo(t.x-ux*9+uy*4,t.y-uy*9-ux*4);
+      OCX.lineTo(t.x-ux*9-uy*4,t.y-uy*9+ux*4);
+      OCX.closePath();OCX.fillStyle=ax.col;OCX.fill();
+    }
+    OCX.font='9px Share Tech Mono,monospace';
+    OCX.fillStyle=ax.col;OCX.textAlign='center';
+    OCX.fillText(ax.l,t.x+dx*.2,t.y+dy*.2+4);
+  });
+
+  // North indicator (world-fixed)
+  const nP=VP(0,-0.72,0);
+  OCX.font='8px Share Tech Mono,monospace';
+  OCX.fillStyle='rgba(255,185,48,0.7)';OCX.textAlign='center';
+  OCX.fillText('N',nP.x,nP.y-4);
+  OCX.beginPath();OCX.arc(nP.x,nP.y+3,2,0,Math.PI*2);
+  OCX.fillStyle='#ffb930';OCX.fill();
+
+  requestAnimationFrame(drawOrient);
+}
+drawOrient();
+
+// ══════════════════════════════════════════
+// PIPELINE PILLS
+// FIX: now maps to actual server fields (board_vis, ready, onset, cam_ok)
+// ══════════════════════════════════════════
+function updatePills(ekf){
+  const set=(id,on,warn)=>{
+    const e=document.getElementById(id);
+    if(!e)return;
+    e.className='pill'+(on?' on':warn?' warn':'');
+  };
+  set('pill-geo',   ekf.board_vis, false);
+  set('pill-ekf',   ekf.ready,     false);
+  set('pill-onset', ekf.onset,     false);
+  set('pill-cam',   ekf.cam_ok,    false);
+}
+
+// ══════════════════════════════════════════
+// LEDS
+// ══════════════════════════════════════════
+function updateLEDs(lbl){
+  const g=document.getElementById('led-g'),r=document.getElementById('led-r');
+  const gs=document.getElementById('led-gs'),rs=document.getElementById('led-rs');
+  if(lbl==='K1'){
+    g.className='led-bulb g';gs.textContent='ON — K1';
+    r.className='led-bulb';  rs.textContent='OFF';
+  }else if(lbl==='K2'){
+    g.className='led-bulb';  gs.textContent='OFF';
+    r.className='led-bulb r';rs.textContent='ON — K2';
+  }else{
+    g.className='led-bulb';  gs.textContent='OFF';
+    r.className='led-bulb';  rs.textContent='OFF';
+  }
+}
+
+// ══════════════════════════════════════════
+// WEBSOCKET
+// ══════════════════════════════════════════
+function connect(){
+  const ws=new WebSocket('ws://localhost:8765');
+
+  ws.onopen=()=>{
+    document.getElementById('status-badge').textContent='LIVE';
+    document.getElementById('status-badge').className='live';
+    document.getElementById('f-ws').textContent='CONNECTED';
+    document.getElementById('cam-dot').style.background='var(--green)';
+    document.getElementById('cam-lbl').textContent='STREAMING';
+  };
+
+  ws.onmessage=e=>{
+    const t0=Date.now();
+    const d=JSON.parse(e.data);
+    const lat=t0-lastMsgT;
+    lastMsgT=t0;
+    document.getElementById('h-lat').textContent=lat;
+    document.getElementById('f-lat').textContent=lat+' ms';
+
+    // ── Camera ──
+    if(d.frame)
+      document.getElementById('camera-feed').src='data:image/jpeg;base64,'+d.frame;
+
+    // ── Markers ──
+    // FIX: server sends tz_cm (already in cm) — do NOT multiply by 100
+    MKRS=d.markers||[];
+    const dIds=MKRS.map(m=>m.id);
+    document.getElementById('h-mkr').textContent=MKRS.length+'/4';
+    [0,1,2,3].forEach(id=>{
+      const hit=dIds.includes(id);
+      document.getElementById('chip'+id).className='mchip'+(hit?' hit':'');
+      const ms=document.getElementById('ms'+id);
+      if(ms)ms.className='mkr-row'+(hit?' active':'');
+      const mtz=document.getElementById('mtz'+id);
+      if(mtz){
+        const mk=MKRS.find(m=>m.id===id);
+        // FIX: field is tz_cm, already in cm, no conversion needed
+        mtz.textContent=mk?mk.tz_cm+'cm':'--';
+      }
+    });
+
+    // ── IMU ──
+    // FIX: BNO055 server sends ax/ay/az (linear accel) only — no gx/gy/gz
+    if(d.imu){
+      IMU=d.imu;
+      setBar('b-ax','v-ax',IMU.ax,20);
+      setBar('b-ay','v-ay',IMU.ay,20);
+      setBar('b-az','v-az',IMU.az,20);
+
+      const hd=Math.round(IMU.heading),ro=Math.round(IMU.roll),pi=Math.round(IMU.pitch);
+      document.getElementById('g-hdg').textContent=hd+'°';
+      document.getElementById('g-roll').textContent=ro+'°';
+      document.getElementById('g-pitch').textContent=pi+'°';
+      document.getElementById('o-hdg').textContent=hd+'°';
+      document.getElementById('o-roll').textContent=ro+'°';
+      document.getElementById('o-pitch').textContent=pi+'°';
+      document.getElementById('h-hdg').textContent=hd+'°';
+
+      drawGauge('g-hdg-c', IMU.heading, 360,'#00ff87');
+      drawGauge('g-roll-c',IMU.roll,    180,'#40b4ff');
+      drawGauge('g-pitch-c',IMU.pitch,   90,'#c060ff');
+      drawCompass(IMU.heading);
+
+      setCal('cal-sys',  IMU.cal_sys);
+      setCal('cal-gyro', IMU.cal_gyro);
+      setCal('cal-accel',IMU.cal_accel);
+      setCal('cal-mag',  IMU.cal_mag);
+
+      const calEl=document.getElementById('h-cal');
+      calEl.textContent=IMU.cal_sys+'/3';
+      calEl.className=IMU.cal_sys===3?'ok':IMU.cal_sys>=1?'warn':'bad';
+
+      // Calibration badge: use cam_ok from EKF as proxy for calibration file loaded
+      // (server sets this true when solvePnP succeeds)
+    }
+
+    // ── EKF ──
+    // FIX: server sends px/py/pz (absolute position), vx/vy/vz (velocity)
+    // and board_vis/ready/onset/cam_ok (not has_geo/calibrated)
+    if(d.ekf){
+      EKF=d.ekf;
+      document.getElementById('ekf-vmag').textContent=(EKF.v_mag||0).toFixed(4);
+      // FIX: px/pz not dx/dz
+      document.getElementById('ekf-px').textContent=(EKF.px||0).toFixed(3);
+      document.getElementById('ekf-pz').textContent=(EKF.pz||0).toFixed(3);
+      document.getElementById('h-vmag').textContent=(EKF.v_mag||0).toFixed(3);
+
+      // EKF velocity bars
+      setBar('b-vx','v-vx',EKF.vx||0, 2.0);
+      setBar('b-vy','v-vy',EKF.vy||0, 2.0);
+      setBar('b-vz','v-vz',EKF.vz||0, 2.0);
+
+      updatePills(EKF);
+
+      // Calibration badge: approximate vs real calibration file
+      const cb=document.getElementById('calib-badge');
+      // FIX: use cam_ok as indicator — if camera correcting, we have geometry
+      cb.textContent=EKF.cam_ok?'CAM·ACTIVE':'APPROX·CAL';
+      cb.className=EKF.cam_ok?'ok':'';
+    }
+
+    // ── Prediction ──
+    if(d.prediction){
+      PRED=d.prediction;
+      const pb=document.getElementById('pred-big');
+      pb.textContent=PRED.label;
+      pb.style.color=
+        PRED.label==='K1'?'#ffb930':
+        PRED.label==='K2'?'#c060ff':'rgba(42,74,106,1)';
+      pb.style.textShadow=
+        PRED.label!=='--'?`0 0 40px ${pb.style.color}`:'none';
+      document.getElementById('pred-reason').textContent=PRED.reason||'';
+      document.getElementById('conf-bar').style.width=(PRED.confidence||0)+'%';
+      document.getElementById('conf-pct').textContent=Math.round(PRED.confidence||0)+'%';
+      document.getElementById('h-pred').textContent=PRED.label;
+
+      // Probability bars
+      const p1=Math.round((PRED.P_K1||0.5)*100);
+      const p2=Math.round((PRED.P_K2||0.5)*100);
+      document.getElementById('prob-k1').style.width=p1+'%';
+      document.getElementById('prob-k2').style.width=p2+'%';
+      document.getElementById('pct-k1').textContent=p1+'%';
+      document.getElementById('pct-k2').textContent=p2+'%';
+
+      updateLEDs(PRED.label);
+    }
+
+    // ── FPS ──
+    fps++;totalF++;
+    const nowT=Date.now();
+    if(nowT-fpsT>=1000){
+      document.getElementById('h-fps').textContent=fps;
+      document.getElementById('f-frames').textContent=totalF;
+      fps=0;fpsT=nowT;
+    }
+  };
+
+  ws.onclose=()=>{
+    document.getElementById('status-badge').textContent='OFFLINE';
+    document.getElementById('status-badge').className='';
+    document.getElementById('f-ws').textContent='DISCONNECTED';
+    document.getElementById('cam-dot').style.background='var(--red)';
+    document.getElementById('cam-lbl').textContent='NO SIGNAL';
+    setTimeout(connect,2000);
+  };
+}
+connect();
+</script>
+</body>
+</html>
